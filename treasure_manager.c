@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+// Defineing a structure to hold treasure details
 typedef struct {
     int TreasureID;
     char UserName[50];
