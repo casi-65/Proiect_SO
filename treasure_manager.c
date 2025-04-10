@@ -26,13 +26,13 @@ void add_treasure(const char *hunt_id)
     char buffer[100];  
     strcpy(buffer, hunt_id);
     strcat(buffer, "/treasure.dat");
-
-    f = open(buffer, O_CREAT | O_TRUNC | O_WRONLY, 0644);
+    // Check if the file exists and open it for appending and writing
+    f = open(buffer, O_CREAT | O_WRONLY | O_APPEND, 0644);
     if (f < 0) {
         printf("Error opening file\n");
         exit(-1);
     }
-
+    // Reading the structure from the user
     Treasure t;
     printf("Enter Treasure ID: ");
     if ((scanf("%s", t.TreasureID)) != 1) {
@@ -75,11 +75,19 @@ void add_treasure(const char *hunt_id)
         printf("Error reading Value\n");
         exit(-1);
     }
-
+    getchar();  // Clear newline left by previous scanf
     // Writing the structure in the file
-    write(f, &t, sizeof(Treasure));
-
-    close(f);  // Close the file
+    if(write(f, &t, sizeof(Treasure))<0)
+    {
+        printf("Error writing\n");
+        exit(-1);
+    }
+    printf("Treasure added successfully!\n");
+    if(close(f)<0)
+    {
+        printf("Error closing the file\n");
+        exit(-1);
+    }  // Close the file
 }
 void list_treasures(const char *hunt_id)
 {
@@ -92,29 +100,44 @@ void view_treasure(const char *hunt_id, char *treasure_id)
     strcpy(buffer, hunt_id);
     strcat(buffer, "/treasure.dat");
 
-    f = open(buffer, O_RDONLY);  // Opening the file for reading
+    f = open(buffer, O_RDONLY);  // Opening the file for reading and checking if it exists
     if (f < 0) {
         printf("Error opening file\n");
         exit(-1);
     }
 
     Treasure t;
-    ssize_t bytes_citite = read(f, &t, sizeof(Treasure)); // Reading the structure
-    if (bytes_citite != sizeof(Treasure)) {  // Verify if the structure is correctly read
-        perror("Error reading file or partial read");
-        close(f);
+    int found = 0;
+    ssize_t bytes;
+    while ((bytes=read(f, &t, sizeof(Treasure))) == sizeof(Treasure)) {
+        if (strcmp(t.TreasureID, treasure_id) == 0) {
+            printf("Treasure found!\n");
+            printf("TreasureID: %s\n", t.TreasureID);
+            printf("UserName: %s\n", t.UserName);
+            printf("Latitude: %f\n", t.Latitude);
+            printf("Longitude: %f\n", t.Longitude);
+            printf("ClueText: %s\n", t.ClueText);
+            printf("Value: %d\n", t.Value);
+            found = 1;
+            break; // Stop searching
+        }
+    }
+    if(bytes==-1)
+    {
+        printf("Error reading the file\n");
         exit(-1);
     }
+    if (!found) {
+        printf("Didn't find the treasure with id: %s\n", treasure_id);
+    }
 
-    printf("TreasureID: %s\n", t.TreasureID);
-    printf("UserName: %s\n", t.UserName);
-    printf("Latitude: %f\n", t.Latitude);
-    printf("Longitude: %f\n", t.Longitude);
-    printf("Cluetext: %s\n", t.ClueText);
-    printf("Value: %d\n", t.Value);
-
-    close(f);  // Close the file
+    if(close(f)<0)
+    {
+        printf("Error closing the file\n");
+        exit(-1);
+    }  // Close the file
 }
+
 void remove_treasure(const char *hunt_id, char *treasure_id)
 {
 
