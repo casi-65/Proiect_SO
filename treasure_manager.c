@@ -130,7 +130,7 @@ void view_treasure(const char *hunt_id, char *treasure_id)
     if (!found) {
         printf("Didn't find the treasure with id: %s\n", treasure_id);
     }
-
+    printf("Succesfully found and removed treasure\n");
     if(close(f)<0)
     {
         printf("Error closing the file\n");
@@ -140,11 +140,56 @@ void view_treasure(const char *hunt_id, char *treasure_id)
 
 void remove_treasure(const char *hunt_id, char *treasure_id)
 {
+    int f;
+    char buffer[100]; 
+    strcpy(buffer, hunt_id);
+    strcat(buffer, "/treasure.dat");
 
+    f = open(buffer, O_RDWR);  // Opening the file for reading and writing and checking if it exists
+    if (f < 0) {
+        printf("Error opening file\n");
+        exit(-1);
+    }
+    off_t current_pos=lseek(f,0,SEEK_SET);
+    Treasure t;
+    int found = 0;
+    ssize_t bytes;  
+    while ((bytes=read(f, &t, sizeof(Treasure))) == sizeof(Treasure))
+    {
+        if(strcmp(t.TreasureID,treasure_id)==0)
+        {
+            // We found the treasure
+            found=1;
+        }
+        else
+        {   
+            lseek(f,current_pos,SEEK_SET);
+            if(write(f,&t,sizeof(Treasure))<0)
+            {
+                printf("Error writing\n");
+                exit(-1);
+            }
+            current_pos=lseek(f,0,SEEK_CUR);
+        }
+    }
+    if(bytes==-1)
+    {
+        printf("Error reading the file\n");
+        exit(-1);
+    }
+    if (!found) {
+        printf("Didn't find the treasure with id: %s\n", treasure_id);
+    }
+
+    if(close(f)<0)
+    {
+        printf("Error closing the file\n");
+        exit(-1);
+    }  // Close the file
 }
 void remove_hunt(const char *hunt_id)
 {
-
+   
 }
 void log_operation(const char *hunt_id, const char *message)
 {
