@@ -15,63 +15,97 @@ typedef struct {
     int Value;
 }Treasure;
 
+void log_operation(const char *hunt_id, const char *message)
+{
+    int f;
+    char buffer[100]; 
+    strcpy(buffer, hunt_id);
+    strcat(buffer, "/logged_hunt.txt");
+    // Opening the file for reading and checking if it exists
+    f = open(buffer, O_APPEND | O_WRONLY | O_CREAT, 0644);
+    if (f == -1) 
+    {
+        printf("Error opening file\n");
+        exit(-1);
+    }
+    char messagebuf[50];
+    strcpy(messagebuf, message);
+    if(write(f,messagebuf,strlen(messagebuf))<0)
+    {
+        printf("Error writing\n");
+        exit(-1);
+    }
+    if(close(f)<0)
+    {
+        printf("Error closing the file\n");
+        exit(-1);
+    }  // Close the file
+    printf("Operation logged successfully!\n");
+}
+
 void add_treasure(const char *hunt_id)
 {
     struct stat st = {0};
-    if (stat(hunt_id, &st) == -1) {
+    if (stat(hunt_id, &st) == -1)
+    {
         mkdir(hunt_id, 0700);
     }
-
     int f;
     char buffer[100];  
     strcpy(buffer, hunt_id);
     strcat(buffer, "/treasure.dat");
     // Check if the file exists and open it for appending and writing
     f = open(buffer, O_CREAT | O_WRONLY | O_APPEND, 0644);
-    if (f < 0) {
+    if (f < 0)
+    {
         printf("Error opening file\n");
         exit(-1);
     }
     // Reading the structure from the user
     Treasure t;
     printf("Enter Treasure ID: ");
-    if ((scanf("%s", t.TreasureID)) != 1) {
+    if ((scanf("%s", t.TreasureID)) != 1)
+    {
         printf("Error reading Treasure ID\n");
         exit(-1);
     }
 
     printf("Enter User Name: ");
-    if ((scanf("%s", t.UserName)) != 1) {
+    if ((scanf("%s", t.UserName)) != 1)
+    {
         printf("Error reading User Name\n");
         exit(-1);
     }
 
     printf("Enter Latitude: ");
-    if ((scanf("%f", &t.Latitude)) != 1) {
+    if ((scanf("%f", &t.Latitude)) != 1)
+    {
         printf("Error reading Latitude\n");
         exit(-1);
     }
-
     printf("Enter Longitude: ");
-    if ((scanf("%f", &t.Longitude)) != 1) {
+    if ((scanf("%f", &t.Longitude)) != 1)
+    {
         printf("Error reading Longitude\n");
         exit(-1);
     }
-
     printf("Enter Clue Text: ");
     getchar();  // Clear newline left by previous scanf
-    if ((fgets(t.ClueText, sizeof(t.ClueText) - 1, stdin)) == NULL) {
+    if ((fgets(t.ClueText, sizeof(t.ClueText) - 1, stdin)) == NULL)
+    {
         printf("Error reading Clue Text\n");
         exit(-1);
     }
     // Remove the newline character from the clue text
     size_t len = strlen(t.ClueText);
-    if (len > 0 && t.ClueText[len - 1] == '\n') {
+    if (len > 0 && t.ClueText[len - 1] == '\n')
+    {
         t.ClueText[len - 1] = '\0';
     }
 
     printf("Enter Value: ");
-    if ((scanf("%d", &t.Value)) != 1) {
+    if ((scanf("%d", &t.Value)) != 1)
+    {
         printf("Error reading Value\n");
         exit(-1);
     }
@@ -83,6 +117,10 @@ void add_treasure(const char *hunt_id)
         exit(-1);
     }
     printf("Treasure added successfully!\n");
+    // Log the operation
+    char log_msg[256];
+    sprintf(log_msg, "Added treasure ID %s by user %s\n", t.TreasureID, t.UserName);
+    log_operation(hunt_id, log_msg);
     if(close(f)<0)
     {
         printf("Error closing the file\n");
@@ -129,6 +167,10 @@ void list_treasures(const char *hunt_id)
         printf("Error reading the file\n");
         exit(-1);
     }
+    // Log the operation
+    char log_msg[256];
+    sprintf(log_msg, "List treasures in Hunt: %s\n", hunt_id);
+    log_operation(hunt_id, log_msg);
     if(close(f)<0)
     {
         printf("Error closing the file\n");
@@ -145,16 +187,19 @@ void view_treasure(const char *hunt_id, char *treasure_id)
     strcat(buffer, "/treasure.dat");
 
     f = open(buffer, O_RDONLY);  // Opening the file for reading and checking if it exists
-    if (f < 0) {
+    if (f < 0) 
+    {
         printf("Error opening file\n");
         exit(-1);
     }
-
+    char username[50];
     Treasure t;
     int found = 0;
     ssize_t bytes;
-    while ((bytes=read(f, &t, sizeof(Treasure))) == sizeof(Treasure)) {
-        if (strcmp(t.TreasureID, treasure_id) == 0) {
+    while ((bytes=read(f, &t, sizeof(Treasure))) == sizeof(Treasure)) 
+    {
+        if (strcmp(t.TreasureID, treasure_id) == 0)
+        {
             printf("Treasure found!\n");
             printf("TreasureID: %s\n", t.TreasureID);
             printf("UserName: %s\n", t.UserName);
@@ -163,6 +208,7 @@ void view_treasure(const char *hunt_id, char *treasure_id)
             printf("ClueText: %s\n", t.ClueText);
             printf("Value: %d\n", t.Value);
             found = 1;
+            strcpy(username, t.UserName);
             break; // Stop searching
         }
     }
@@ -171,10 +217,15 @@ void view_treasure(const char *hunt_id, char *treasure_id)
         printf("Error reading the file\n");
         exit(-1);
     }
-    if (!found) {
+    if (!found) 
+    {
         printf("Didn't find the treasure with id: %s\n", treasure_id);
         exit(-1);
     }
+    // Log the operation
+    char log_msg[256];
+    sprintf(log_msg, "View treasure ID %s by user %s\n", treasure_id, username);
+    log_operation(hunt_id, log_msg);
     if(close(f)<0)
     {
         printf("Error closing the file\n");
@@ -182,11 +233,13 @@ void view_treasure(const char *hunt_id, char *treasure_id)
     }  // Close the file
 }
 
-void remove_treasure(const char *hunt_id, char *treasure_id) {
+void remove_treasure(const char *hunt_id, char *treasure_id)
+{
     int f;
     char buffer[100]; 
     strcpy(buffer, hunt_id);
     strcat(buffer, "/treasure.dat");
+    char username[50];
     // Opening the file for reading and checking if it exists
     f = open(buffer, O_RDWR);
     if (f == -1) 
@@ -203,10 +256,8 @@ void remove_treasure(const char *hunt_id, char *treasure_id) {
     if (temp_fd == -1) 
     {
         printf("Error opening temporary file\n");
-        close(f);
         exit(-1);
     }
-
     Treasure t;
     int treasure_found = 0;
     while (read(f, &t, sizeof(Treasure)) == sizeof(Treasure))
@@ -214,6 +265,7 @@ void remove_treasure(const char *hunt_id, char *treasure_id) {
         if (strcmp(t.TreasureID,treasure_id)==0) 
         {
             treasure_found = 1;  // Skipping the treasure to remove it
+            strcpy(username, t.UserName);
             continue;
         }
         write(temp_fd, &t, sizeof(Treasure));
@@ -226,7 +278,10 @@ void remove_treasure(const char *hunt_id, char *treasure_id) {
         unlink(buffer);
         rename(buffer2, buffer);
     }
-
+    // Log the operation
+    char log_msg[256];
+    sprintf(log_msg, "Deleted treasure ID %s by user %s\n", treasure_id, username);
+    log_operation(hunt_id, log_msg);
     if(close(f)<0)
     {
         printf("Error closing the file\n");
@@ -252,8 +307,8 @@ void remove_hunt(const char *hunt_id)
     }
     char file_path[50];
     // Storing the path of the files
-    char files[3][50]={"treasure.dat"};
-    for(int i=0; i<1; i++)
+    char files[3][50]={"treasure.dat","logged_hunt.txt"};
+    for(int i=0; i<2; i++)
     {
         sprintf(file_path,"%s/%s",hunt_id,files[i]);
         // Removing the files
@@ -271,13 +326,10 @@ void remove_hunt(const char *hunt_id)
     }
     printf("Hunt '%s' removed.\n", hunt_id);
 }
-void log_operation(const char *hunt_id, const char *message)
-{
 
-}
 void create_symlink(const char *hunt_id)
 {
-
+    
 }
 
 
