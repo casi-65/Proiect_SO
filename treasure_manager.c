@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <time.h>
 
 typedef struct {
     char TreasureID[50];
@@ -28,9 +29,8 @@ void log_operation(const char *hunt_id, const char *message)
         printf("Error opening file\n");
         exit(-1);
     }
-    char messagebuf[50];
-    strcpy(messagebuf, message);
-    if(write(f,messagebuf,strlen(messagebuf))<0)
+    // Writing the message to the file
+    if(write(f,message,strlen(message))<0)
     {
         printf("Error writing\n");
         exit(-1);
@@ -45,12 +45,14 @@ void log_operation(const char *hunt_id, const char *message)
 
 void create_symlink(const char *hunt_id)
 {
+    // Create a symlink to the log file
     char log_path[50];
     char link[50];
     snprintf(log_path, sizeof(log_path), "%s/logged_hunt.txt", hunt_id);
     snprintf(link, sizeof(link), "logged_hunt-%s", hunt_id);
     // Remove if exists
     unlink(link);
+    // Create the symlink
     if (symlink(log_path, link) == -1) 
     {
         printf("Error creating symlink\n");
@@ -64,6 +66,7 @@ void create_symlink(const char *hunt_id)
 
 void add_treasure(const char *hunt_id)
 {
+    // Check if the directory exists
     struct stat st = {0};
     if (stat(hunt_id, &st) == -1)
     {
@@ -88,14 +91,12 @@ void add_treasure(const char *hunt_id)
         printf("Error reading Treasure ID\n");
         exit(-1);
     }
-
     printf("Enter User Name: ");
     if ((scanf("%s", t.UserName)) != 1)
     {
         printf("Error reading User Name\n");
         exit(-1);
     }
-
     printf("Enter Latitude: ");
     if ((scanf("%f", &t.Latitude)) != 1)
     {
@@ -166,7 +167,8 @@ void list_treasures(const char *hunt_id)
         printf("Error opening file\n");
         exit(-1);
     }
-
+    // Print hunt details
+    printf("Hunt: %s\nFile Size: %lld bytes\nLast Modified: %s\n", hunt_id, info.st_size, ctime(&info.st_mtime));
     Treasure t;
     ssize_t bytes;
     //Reading the structure from the file until we find the treasure
@@ -218,6 +220,7 @@ void view_treasure(const char *hunt_id, char *treasure_id)
         printf("Error opening file\n");
         exit(-1);
     }
+    // Reading the structure from the file until we find the treasure
     char username[50];
     Treasure t;
     int found = 0;
@@ -238,11 +241,13 @@ void view_treasure(const char *hunt_id, char *treasure_id)
             break; // Stop searching
         }
     }
+    // If bytes is -1, it means there was an error reading the file
     if(bytes==-1)
     {
         printf("Error reading the file\n");
         exit(-1);
     }
+    // If found is still 0, it means the treasure was not found
     if (!found) 
     {
         printf("Didn't find the treasure with id: %s\n", treasure_id);
@@ -301,11 +306,13 @@ void remove_treasure(const char *hunt_id, char *treasure_id)
             strcpy(username, t.UserName);
             continue;
         }
+        // Write the treasure to the temporary file
         write(temp_fd, &t, sizeof(Treasure));
     }
     if (!treasure_found) 
     {
         printf("Treasure with ID %s not found.\n", treasure_id);
+        unlink(buffer2);
     } 
     else 
     {
@@ -364,12 +371,13 @@ void remove_hunt(const char *hunt_id)
 
 int main(int argc, char **argv)
 {
+    // Check if the correct number of arguments is provided
     if (argc < 3)
     {
         fprintf(stderr, "Usage:\n"
                         "--add <hunt_id>\n"
                         "--list <hunt_id>\n"
-                        "--view <hunt_id><treasure_id>\n"
+                        "--view <hunt_id> <treasure_id>\n"
                         "--remove_treasure <hunt_id> <treasure_id>\n"
                         "--remove_hunt <hunt_id>\n");
         exit(-1);
