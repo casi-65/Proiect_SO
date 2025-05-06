@@ -11,11 +11,12 @@ void handle_SIGTERM(int sig)
     fflush(stdout);
     usleep(3000000);
     printf("Terminated.\n");
-    exit(0);
+    exit(0); // Terminate the process
 }
 
 void handle_SIGUSR1(int sig)
 {
+    // Open the file to read the command and arguments
     FILE *f = fopen("prm.txt", "r");
     if (!f)
     {
@@ -24,25 +25,34 @@ void handle_SIGUSR1(int sig)
     }
     char args[3][20];
     int count = 0;
+    // Read the command and arguments from the file
     while (fgets(args[count], sizeof(args[count]), f) && count < 3)
     {
+        // Remove the newline character from the string
         args[count][strcspn(args[count], "\n")] = 0;
         count++;
     }
     fclose(f);
+    if (unlink("prm.txt") == -1) 
+    {
+        perror("Failed to remove prm.txt");
+    }
     if (count == 0)
     {
         printf("prm.txt is empty\n");
         return;
     }
+    // Prepare the arguments for execvp
     char *exec_args[5] = {"./treasure_manager", NULL, NULL, NULL};
     for (int i = 0; i < count; i++)
     {
-        exec_args[i + 1] = args[i];
+        exec_args[i + 1] = args[i]; // Start from index 1 to leave space for the program name
     }
     pid_t pid = fork();
     if (pid == 0)
     {
+        // Child process
+        // Execute the command
         execvp(exec_args[0], exec_args);
         printf("execvp failed");
         exit(1);
@@ -50,6 +60,8 @@ void handle_SIGUSR1(int sig)
     else if (pid > 0)
     {
         int status;
+        // Parent process
+        // Wait for the child process to finish
         waitpid(pid, &status, 0);
         fflush(stdout);
     }
@@ -62,6 +74,7 @@ void handle_SIGUSR1(int sig)
 
 int main(void)
 {
+    // Set up the signal handler for SIGUSR1 and SIGTERM
     struct sigaction sa;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
