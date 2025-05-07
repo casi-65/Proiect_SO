@@ -170,7 +170,7 @@ void list_treasures(const char *hunt_id)
         exit(-1);
     }
     // Print hunt details
-    printf("Hunt: %s\nFile Size: %lld bytes\nLast Modified: %s\n", hunt_id, info.st_size, ctime(&info.st_mtime));
+    printf("Hunt: %s\nFile Size: %ld bytes\nLast Modified: %s\n", hunt_id, info.st_size, ctime(&info.st_mtime));
     Treasure t;
     ssize_t bytes;
     // Reading the structure from the file until we find the treasure
@@ -352,7 +352,7 @@ void remove_hunt(const char *hunt_id)
         printf("Directory does not exist\n");
         exit(-1);
     }
-    char file_path[50];
+    char file_path[51];
     // Storing the path of the files
     char files[3][50] = {"treasure.dat", "logged_hunt.txt"};
     for (int i = 0; i < 2; i++)
@@ -402,8 +402,8 @@ void list_hunts()
             continue;
         }
         // Check if the directory contains a treasure file
-        char path[50];
-        snprintf(path, sizeof(path), "%s/treasure.dat", entry->d_name);
+        char path[256];
+        snprintf(path, sizeof(path)+13, "%s/treasure.dat", entry->d_name);
         // Check if the file exists
         int fd = open(path, O_RDONLY);
         if (fd < 0)
