@@ -403,7 +403,7 @@ void list_hunts()
         }
         // Check if the directory contains a treasure file
         char path[256];
-        snprintf(path, sizeof(path)+13, "%s/treasure.dat", entry->d_name);
+        snprintf(path, sizeof(path), "%s/treasure.dat", entry->d_name);
         // Check if the file exists
         int fd = open(path, O_RDONLY);
         if (fd < 0)
