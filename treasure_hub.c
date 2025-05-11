@@ -4,8 +4,10 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 pid_t monitor_pid = -1;
+int monitor_closing = 0;
 
 void startMonitor(void)
 {
@@ -36,8 +38,10 @@ void handle_sigchld(int sig)
     pid_t pid = waitpid(-1, &status, WNOHANG);
     if (pid == monitor_pid)
     {
-        printf("Monitor process has exited.\n");
+        printf("Monitor process has exited.\n>>> ");
+        fflush(stdout);
         monitor_pid = -1;
+        monitor_closing = 0;
     }
 }
 
@@ -56,7 +60,10 @@ int main(void)
     {
         // Print the prompt and wait for user input
         usleep(300000);
-        printf(">>> ");
+        if (!monitor_closing)
+        {
+            printf(">>> ");
+        }
         fflush(stdout);
         // Read the command from the user
         if (!fgets(command, sizeof(command), stdin))
@@ -65,6 +72,11 @@ int main(void)
         }
         // Remove the newline character from the command
         command[strcspn(command, "\n")] = '\0';
+        if (monitor_closing)
+        {
+            printf("Monitor is shutting down, please wait...\n");
+            continue;
+        }
 
         if (strcmp(command, "start_monitor") == 0)
         {
@@ -106,7 +118,7 @@ int main(void)
                 {
                     printf("Failed to send SIGUSR1 to monitor\n");
                     // Set monitor_pid to -1 to indicate it's no longer valid
-                    monitor_pid = -1; 
+                    monitor_pid = -1;
                 }
             }
         }
@@ -142,7 +154,8 @@ int main(void)
                 if (kill(monitor_pid, SIGUSR1) == -1)
                 {
                     printf("Failed to send SIGUSR1 to monitor\n");
-                    monitor_pid = -1; // presupunem că nu mai este valid
+                    // Set monitor_pid to -1 to indicate it's no longer valid
+                    monitor_pid = -1;
                 }
             }
         }
@@ -167,7 +180,8 @@ int main(void)
                 if (kill(monitor_pid, SIGUSR1) == -1)
                 {
                     printf("Failed to send SIGUSR1 to monitor\n");
-                    monitor_pid = -1; // presupunem că nu mai este valid
+                    // Set monitor_pid to -1 to indicate it's no longer valid
+                    monitor_pid = -1;
                 }
             }
         }
@@ -179,14 +193,15 @@ int main(void)
             }
             else
             {
-                // Send SIGTERM to the monitor process
-                kill(monitor_pid, SIGTERM);
-                printf("Waiting for monitor to shut down...\n");
-                // Wait for the monitor process to terminate
-                while (monitor_pid != -1)
+                monitor_closing = 1;
+                if (kill(monitor_pid, SIGTERM) == -1)
                 {
-                    // Check if the monitor process has terminated
-                    usleep(300000);
+                    perror("Failed to send SIGTERM");
+                    monitor_closing = 0;
+                }
+                else
+                {
+                    printf("Waiting for monitor to shut down...\n");
                 }
             }
         }
