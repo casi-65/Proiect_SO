@@ -8,11 +8,33 @@
 
 pid_t monitor_pid = -1;
 int monitor_closing = 0;
+int pipefd[2];
+
+void readPipe()
+{
+    char buffer[1024];
+    ssize_t nbytes = read(pipefd[0], buffer, sizeof(buffer) - 1);
+    if (nbytes > 0)
+    {
+        buffer[nbytes] = '\0'; 
+        printf("Result from Treasure Manager:\n%s", buffer);
+    }
+    else
+    {
+        printf("Eroare la citire din pipe\n");
+        exit(-1);
+    }
+}
 
 void startMonitor(void)
 {
     // Fork the process to create a new child process
     // that will run the monitor program
+    if (pipe(pipefd) == -1)
+    {
+        printf("Error at pipe\n");
+        exit(-1);
+    }
     monitor_pid = fork();
     if (monitor_pid < 0)
     {
@@ -23,7 +45,9 @@ void startMonitor(void)
     if (monitor_pid == 0)
     {
         // Replace the child process with the monitor program
-        execl("./monitor", "monitor", NULL);
+        char fd_str[10];
+        sprintf(fd_str, "%d", pipefd[1]);
+        execl("./monitor", "monitor", fd_str, NULL);
         printf("execl failed\n");
         exit(-1);
     }
@@ -120,6 +144,10 @@ int main(void)
                     // Set monitor_pid to -1 to indicate it's no longer valid
                     monitor_pid = -1;
                 }
+                else
+                {
+                    readPipe();
+                }
             }
         }
         else if (strcmp(command, "view_treasure") == 0)
@@ -157,6 +185,10 @@ int main(void)
                     // Set monitor_pid to -1 to indicate it's no longer valid
                     monitor_pid = -1;
                 }
+                else
+                {
+                    readPipe();
+                }
             }
         }
         else if (strcmp(command, "list_hunts") == 0)
@@ -182,6 +214,10 @@ int main(void)
                     printf("Failed to send SIGUSR1 to monitor\n");
                     // Set monitor_pid to -1 to indicate it's no longer valid
                     monitor_pid = -1;
+                }
+                else
+                {
+                    readPipe();
                 }
             }
         }
@@ -232,6 +268,5 @@ int main(void)
             printf("Unknown command. Type 'help' for list of commands.\n");
         }
     }
-
     return 0;
 }

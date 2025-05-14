@@ -18,6 +18,7 @@ typedef struct
     int Value;
 } Treasure;
 
+
 void log_operation(const char *hunt_id, const char *message)
 {
     int f;
@@ -170,7 +171,7 @@ void list_treasures(const char *hunt_id)
         exit(-1);
     }
     // Print hunt details
-    printf("Hunt: %s\nFile Size: %ld bytes\nLast Modified: %s\n", hunt_id, info.st_size, ctime(&info.st_mtime));
+    printf("Hunt: %s\nFile Size: %lld bytes\nLast Modified: %s\n", hunt_id, info.st_size, ctime(&info.st_mtime));
     Treasure t;
     ssize_t bytes;
     // Reading the structure from the file until we find the treasure

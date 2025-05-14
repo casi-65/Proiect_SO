@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+int pipe_fd[2];
+
 void handle_SIGTERM(int sig)
 {
     printf("Shutting down after delay...\n");
@@ -33,7 +35,7 @@ void handle_SIGUSR1(int sig)
         count++;
     }
     fclose(f);
-    if (unlink("prm.txt") == -1) 
+    if (unlink("prm.txt") == -1)
     {
         perror("Failed to remove prm.txt");
     }
@@ -53,6 +55,7 @@ void handle_SIGUSR1(int sig)
     {
         // Child process
         // Execute the command
+        dup2(pipe_fd[1], STDOUT_FILENO);
         execvp(exec_args[0], exec_args);
         printf("execvp failed");
         exit(1);
@@ -72,8 +75,9 @@ void handle_SIGUSR1(int sig)
     }
 }
 
-int main(void)
+int main(int argc,char **argv)
 {
+    pipe_fd[1] = atoi(argv[1]);
     // Set up the signal handler for SIGUSR1 and SIGTERM
     struct sigaction sa;
     sigemptyset(&sa.sa_mask);
