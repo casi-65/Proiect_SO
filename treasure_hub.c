@@ -238,7 +238,7 @@ int main(void)
                 monitor_closing = 1; // Set the flag to indicate monitor is closing
                 if (kill(monitor_pid, SIGTERM) == -1)
                 {
-                    perror("Failed to send SIGTERM");
+                    printf("Failed to send SIGTERM\n");
                     monitor_closing = 0;
                 }
                 else
@@ -280,7 +280,8 @@ int main(void)
                     // Build the path to the treasure file
                     char treasure_path[256];
                     snprintf(treasure_path, sizeof(treasure_path), "%s/treasure.dat", entry->d_name);
-                    if (access(treasure_path, F_OK) == 0)
+                    // Check if the treasure file exists
+                    if (access(treasure_path, F_OK) == 0) 
                     {
                         int pipefd2[2]; // File descriptor for the pipe
                         if (pipe(pipefd2) == -1)
@@ -311,7 +312,7 @@ int main(void)
                                 printf("%s", buffer);
                             }
                             close(pipefd2[0]); // Close the read end of the pipe
-                            wait(NULL); // așteaptă procesul copil
+                            wait(NULL); // Wait for the child process to finish
                         }
                         else
                         {
@@ -332,7 +333,7 @@ int main(void)
             printf("  view_treasure     - View a specific treasure\n");
             printf("  stop_monitor      - Stop the monitor process\n");
             printf("  exit              - Exit this program (if monitor is stopped)\n");
-            printf("  calculate_score    - Calculate and display score for each user in all hunts\n");
+            printf("  calculate_score   - Calculate and display score for each user in all hunts\n");
         }
         else
         {

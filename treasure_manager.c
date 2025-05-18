@@ -311,7 +311,7 @@ void remove_treasure(const char *hunt_id, char *treasure_id)
         // Write the treasure to the temporary file
         if (write(temp_fd, &t, sizeof(Treasure)) < 0)
         {
-            perror("Error writing to temporary file");
+            printf("Error writing to temporary file\n");
             exit(-1);
         }
     }
@@ -425,7 +425,7 @@ void list_hunts()
         // If r is -1, it means there was an error reading the file
         if (r == -1)
         {
-            perror("Error reading treasure file");
+            printf("Error reading treasure file");
             close(fd);
             exit(-1);
         }

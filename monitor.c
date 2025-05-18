@@ -40,7 +40,7 @@ void handle_SIGUSR1(int sig)
     fclose(f);
     if (unlink("prm.txt") == -1)
     {
-        perror("Failed to remove prm.txt");
+        printf("Failed to remove prm.txt\n");
     }
     if (count == 0)
     {
