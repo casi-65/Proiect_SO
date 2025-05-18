@@ -398,7 +398,9 @@ void list_hunts()
             continue;
         }
         struct stat st;
-        if (stat(entry->d_name, &st) == -1 || !S_ISDIR(st.st_mode))
+        // Check if the entry is a directory
+        // and check if it was read successfully
+        if (stat(entry->d_name, &st) == -1 || !S_ISDIR(st.st_mode)) 
         {
             continue;
         }
@@ -432,7 +434,7 @@ void list_hunts()
             printf("Error closing the file\n");
             exit(-1);
         }
-        printf("Hunt: %s → %d treasure%s\n", entry->d_name, count, count == 1 ? "" : "s");
+        printf("Hunt: %s has %d treasure%s\n", entry->d_name, count, count == 1 ? "" : "s");
     }
     closedir(dir);
 }

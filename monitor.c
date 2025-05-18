@@ -5,7 +5,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-int pipe_fd[2];
+
+int pipe_fd[2];// File descriptor for the pipe
 
 void handle_SIGTERM(int sig)
 {
@@ -13,6 +14,8 @@ void handle_SIGTERM(int sig)
     fflush(stdout);
     usleep(3000000);
     printf("Terminated.\n");
+    // Close the pipe
+    close(pipe_fd[1]);
     exit(0); // Terminate the process
 }
 
@@ -56,8 +59,10 @@ void handle_SIGUSR1(int sig)
         // Child process
         // Execute the command
         dup2(pipe_fd[1], STDOUT_FILENO);
+        // Close the write end of the pipe
+        close(pipe_fd[1]);
         execvp(exec_args[0], exec_args);
-        printf("execvp failed");
+        printf("execvp failed\n");
         exit(1);
     }
     else if (pid > 0)
@@ -75,9 +80,9 @@ void handle_SIGUSR1(int sig)
     }
 }
 
-int main(int argc,char **argv)
+int main(int argc, char **argv)
 {
-    pipe_fd[1] = atoi(argv[1]);
+    pipe_fd[1] = atoi(argv[1]); // Get the write end of the pipe from command line argument
     // Set up the signal handler for SIGUSR1 and SIGTERM
     struct sigaction sa;
     sigemptyset(&sa.sa_mask);
@@ -86,11 +91,6 @@ int main(int argc,char **argv)
     sigaction(SIGUSR1, &sa, NULL);
     sa.sa_handler = handle_SIGTERM;
     sigaction(SIGTERM, &sa, NULL);
-    // printf("Waiting for command: \n"
-    //        "1): list_hunts \n"
-    //        "2): list_treasures\n"
-    //        "3): view_treasure\n"
-    //        "4): stop_monitor\n");
     while (1)
         pause();
     return 0;

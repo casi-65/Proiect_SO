@@ -5,18 +5,20 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 pid_t monitor_pid = -1;
 int monitor_closing = 0;
-int pipefd[2];
 
-void readPipe()
+void readPipe(int pipefd[2])
 {
     char buffer[1024];
     ssize_t nbytes = read(pipefd[0], buffer, sizeof(buffer) - 1);
     if (nbytes > 0)
     {
-        buffer[nbytes] = '\0'; 
+        buffer[nbytes] = '\0';
         printf("Result from Treasure Manager:\n%s", buffer);
     }
     else
@@ -26,7 +28,7 @@ void readPipe()
     }
 }
 
-void startMonitor(void)
+void startMonitor(int pipefd[2])
 {
     // Fork the process to create a new child process
     // that will run the monitor program
@@ -44,6 +46,7 @@ void startMonitor(void)
     // Child process
     if (monitor_pid == 0)
     {
+        close(pipefd[0]);
         // Replace the child process with the monitor program
         char fd_str[10];
         sprintf(fd_str, "%d", pipefd[1]);
@@ -52,20 +55,23 @@ void startMonitor(void)
         exit(-1);
     }
     // Parent process
+    close(pipefd[1]);
     printf("Monitor started with PID %d\n", monitor_pid);
 }
 
 void handle_sigchld(int sig)
 {
     int status;
-    // Wait for any child process to change state
-    pid_t pid = waitpid(-1, &status, WNOHANG);
-    if (pid == monitor_pid)
+    if (monitor_pid > 0)
     {
-        printf("Monitor process has exited.\n>>> ");
-        fflush(stdout);
-        monitor_pid = -1;
-        monitor_closing = 0;
+        pid_t pid = waitpid(monitor_pid, &status, WNOHANG);
+        if (pid == monitor_pid)
+        {
+            printf("Monitor process has exited.\n>>> ");
+            fflush(stdout);
+            monitor_pid = -1;
+            monitor_closing = 0;
+        }
     }
 }
 
@@ -79,7 +85,7 @@ int main(void)
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
     sigaction(SIGCHLD, &sa, NULL);
-
+    int pipefd[2];
     while (1)
     {
         // Print the prompt and wait for user input
@@ -111,7 +117,7 @@ int main(void)
             else
             {
                 // Start the monitor process
-                startMonitor();
+                startMonitor(pipefd);
             }
         }
         else if (strcmp(command, "list_treasures") == 0)
@@ -146,7 +152,7 @@ int main(void)
                 }
                 else
                 {
-                    readPipe();
+                    readPipe(pipefd);
                 }
             }
         }
@@ -187,7 +193,7 @@ int main(void)
                 }
                 else
                 {
-                    readPipe();
+                    readPipe(pipefd);
                 }
             }
         }
@@ -217,7 +223,7 @@ int main(void)
                 }
                 else
                 {
-                    readPipe();
+                    readPipe(pipefd);
                 }
             }
         }
@@ -229,7 +235,7 @@ int main(void)
             }
             else
             {
-                monitor_closing = 1;
+                monitor_closing = 1; // Set the flag to indicate monitor is closing
                 if (kill(monitor_pid, SIGTERM) == -1)
                 {
                     perror("Failed to send SIGTERM");
@@ -237,6 +243,7 @@ int main(void)
                 }
                 else
                 {
+                    close(pipefd[0]); // Close the read end of the pipe
                     printf("Waiting for monitor to shut down...\n");
                 }
             }
@@ -253,6 +260,69 @@ int main(void)
                 break;
             }
         }
+        else if (strcmp(command, "calculate_score") == 0)
+        {
+            DIR *dir = opendir(".");
+            struct dirent *entry; // Directory entry
+
+            if (!dir)
+            {
+                printf("Error at opening directory\n");
+                continue;
+            }
+            // Loop through the directory entries
+            while ((entry = readdir(dir)) != NULL)
+            {
+                struct stat st;
+                // Verify if the entry is a directory
+                if (stat(entry->d_name, &st) == 0 && S_ISDIR(st.st_mode))
+                {
+                    // Build the path to the treasure file
+                    char treasure_path[256];
+                    snprintf(treasure_path, sizeof(treasure_path), "%s/treasure.dat", entry->d_name);
+                    if (access(treasure_path, F_OK) == 0)
+                    {
+                        int pipefd2[2]; // File descriptor for the pipe
+                        if (pipe(pipefd2) == -1)
+                        {
+                            printf("Pipe Error\n");
+                            continue;
+                        }
+
+                        pid_t pid = fork();
+                        if (pid == 0)
+                        {
+                            close(pipefd2[0]); // Close the read end of the pipe
+                            dup2(pipefd2[1], STDOUT_FILENO); // Redirect stdout to the pipe
+                            close(pipefd2[1]); // Close the write end of the pipe
+                            execl("./calculate_score", "calculate_score", entry->d_name, NULL);
+                            printf("Error execl\n");
+                            exit(-1);
+                        }
+                        else if (pid > 0)
+                        {
+                            close(pipefd2[1]); // Close the write end of the pipe
+                            char buffer[1024];
+                            ssize_t bytes;
+                            // Read the output from the child process
+                            while ((bytes = read(pipefd2[0], buffer, sizeof(buffer) - 1)) > 0)
+                            {
+                                buffer[bytes] = '\0';
+                                printf("%s", buffer);
+                            }
+                            close(pipefd2[0]); // Close the read end of the pipe
+                            wait(NULL); // așteaptă procesul copil
+                        }
+                        else
+                        {
+                            printf("Error fork\n");
+                        }
+                    }
+                }
+            }
+
+            closedir(dir); // Close the directory
+        }
         else if (strcmp(command, "help") == 0)
         {
             printf("Available commands:\n");
@@ -262,6 +332,7 @@ int main(void)
             printf("  view_treasure     - View a specific treasure\n");
             printf("  stop_monitor      - Stop the monitor process\n");
             printf("  exit              - Exit this program (if monitor is stopped)\n");
+            printf("  calculate_score    - Calculate and display score for each user in all hunts\n");
         }
         else
         {
